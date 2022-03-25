@@ -1,16 +1,20 @@
-import React from "react";
+import React, { useState } from "react";
+import { useDispatch } from "react-redux";
+import { auth, provider, storage } from "../firebase";
 import {
   CssBaseline,
   TextField,
-  FormControlLabel,
-  Checkbox,
-  Link,
   Paper,
-  Box,
   Grid,
   Typography,
+  IconButton,
 } from "@mui/material";
 import LockIcon from "@mui/icons-material/Lock";
+import SendIcon from "@mui/icons-material/Send";
+import EmailIcon from "@mui/icons-material/Email";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import { updateUserProfile } from "../features/userSlice";
+
 import {
   SRootGrid,
   SImageGrid,
@@ -19,21 +23,65 @@ import {
   SButton,
   SForm,
 } from "./styled";
+import styles from "./Auth.module.css";
+import { Box } from "@mui/system";
 
-function Copyright() {
-  return (
-    <Typography variant="body2" color="textSecondary" align="center">
-      {"Copyright © "}
-      <Link color="inherit" href="https://material-ui.com/">
-        TwiRep
-      </Link>{" "}
-      {new Date().getFullYear()}
-      {"."}
-    </Typography>
-  );
-}
+const Auth: React.FC = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLogin, setIsLogin] = useState(true);
 
-export default function SignInSide() {
+  const [username, setUsername] = useState("");
+  const [avatarImage, setAvatarImage] = useState<File | null>(null);
+
+  const dispatch = useDispatch();
+
+  const onChangeImageHandler = (event: React.ChangeEvent<HTMLInputElement>) => {
+    // !マークはtypescriptでnullまたはundefinedではないと宣言している
+    if (event.target.files![0]) {
+      setAvatarImage(event.target.files![0]);
+      event.target.value = "";
+    }
+  };
+
+  const signInEmail = async () => {
+    await auth.signInWithEmailAndPassword(email, password);
+  };
+
+  const signUpEmail = async () => {
+    const authUser = await auth.createUserWithEmailAndPassword(email, password);
+    let url = "";
+    // 画像をstorageへ保存
+    if (avatarImage) {
+      const S =
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+      // 16文字の名前を作りたいので16をセット
+      const N = 16;
+      // randomCharには16桁の乱数が入る。Uint32Arrayで約43億の配列ができ、そのうち16個がnに入る。
+      // その配列をSの長さ62で割ると必ず0～61が出力されるのでS[index]となる
+      const randomChar = Array.from(crypto.getRandomValues(new Uint32Array(N)))
+        .map((n) => S[n % S.length])
+        .join("");
+      const fileName = randomChar + "_" + avatarImage.name;
+      await storage.ref(`avatars/${fileName}`).put(avatarImage);
+      url = await storage.ref("avatars").child(fileName).getDownloadURL();
+    }
+    await authUser.user?.updateProfile({
+      displayName: username,
+      photoURL: url,
+    });
+    dispatch(
+      updateUserProfile({
+        displayName: username,
+        photoUrl: url,
+      })
+    );
+  };
+
+  const signInGoogle = async () => {
+    await auth.signInWithPopup(provider).catch((error) => alert(error.message));
+  };
+
   return (
     <SRootGrid container>
       <CssBaseline />
@@ -44,9 +92,50 @@ export default function SignInSide() {
             <LockIcon />
           </SAvatar>
           <Typography component="h1" variant="h5">
-            Sign in
+            {isLogin ? "Login" : "Register"}
           </Typography>
+
+          {/* 入力フォーム */}
           <SForm noValidate>
+            {!isLogin && (
+              <>
+                <TextField
+                  variant="outlined"
+                  margin="normal"
+                  required
+                  fullWidth
+                  id="username"
+                  label="Username"
+                  name="username"
+                  autoComplete="username"
+                  autoFocus
+                  value={username}
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+                    setUsername(event.target.value);
+                  }}
+                />
+                <Box textAlign="center">
+                  <IconButton>
+                    <label>
+                      <AccountCircleIcon
+                        fontSize="large"
+                        className={
+                          avatarImage
+                            ? styles.login_addIconLoaded
+                            : styles.login_addIcon
+                        }
+                      />
+                      <input
+                        type="file"
+                        className={styles.login_hiddenIcon}
+                        onChange={onChangeImageHandler}
+                      />
+                    </label>
+                  </IconButton>
+                </Box>
+              </>
+            )}
+
             <TextField
               variant="outlined"
               margin="normal"
@@ -57,6 +146,10 @@ export default function SignInSide() {
               name="email"
               autoComplete="email"
               autoFocus
+              value={email}
+              onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+                setEmail(event.target.value);
+              }}
             />
             <TextField
               variant="outlined"
@@ -68,36 +161,65 @@ export default function SignInSide() {
               type="password"
               id="password"
               autoComplete="current-password"
+              value={password}
+              onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+                setPassword(event.target.value);
+              }}
             />
-            <FormControlLabel
-              control={<Checkbox value="remember" color="primary" />}
-              label="Remember me"
-            />
+
+            {/* ログインボタン */}
             <SButton
-              type="submit"
               fullWidth
               variant="contained"
-              color="primary">
-              Sign In
+              color="primary"
+              startIcon={<EmailIcon />}
+              onClick={
+                isLogin
+                  ? async () => {
+                      try {
+                        await signInEmail();
+                      } catch (error: any) {
+                        alert(error.message);
+                      }
+                    }
+                  : async () => {
+                      try {
+                        await signUpEmail();
+                      } catch (error: any) {
+                        alert(error.message);
+                      }
+                    }
+              }>
+              {isLogin ? "Login" : "Register"}
             </SButton>
-            <Grid container sx={{ my: 2 }}>
+
+            {/* ヘルプボタン */}
+            <Grid container>
               <Grid item xs>
-                <Link href="#" variant="body2">
-                  Forgot password?
-                </Link>
+                <span className={styles.login_reset}>Forgot Password?</span>
               </Grid>
+
               <Grid item>
-                <Link href="#" variant="body2">
-                  {"Don't have an account? Sign Up"}
-                </Link>
+                <span
+                  onClick={() => setIsLogin(!isLogin)}
+                  className={styles.login_toggleMode}>
+                  {isLogin ? "Create new account?" : "Back to Login"}
+                </span>
               </Grid>
             </Grid>
-            <Box mt={5}>
-              <Copyright />
-            </Box>
+
+            {/* GOOGLE認証 */}
+            <SButton
+              fullWidth
+              variant="contained"
+              color="primary"
+              onClick={signInGoogle}>
+              SignIn with Google
+            </SButton>
           </SForm>
         </SPaperDiv>
       </Grid>
     </SRootGrid>
   );
-}
+};
+export default Auth;

@@ -10,7 +10,7 @@ export const SRootGrid = styled(Grid)({
 });
 
 export const SImageGrid = styled(Grid)({
-  backgroundImage: "url(https://source.unsplash.com/random)",
+  backgroundImage: "url(https://images.unsplash.com/photo-1598439210625-5067c578f3f6?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1172&q=80)",
   backgroundRepeat: "no-repeat",
   backgroundSize: "cover",
   backgroundPosition: "center",
