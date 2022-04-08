@@ -10,7 +10,8 @@ export const SRootGrid = styled(Grid)({
 });
 
 export const SImageGrid = styled(Grid)({
-  backgroundImage: "url(https://images.unsplash.com/photo-1598439210625-5067c578f3f6?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1172&q=80)",
+  backgroundImage:
+    "url(https://images.unsplash.com/photo-1598439210625-5067c578f3f6?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1172&q=80)",
   backgroundRepeat: "no-repeat",
   backgroundSize: "cover",
   backgroundPosition: "center",
@@ -36,3 +37,24 @@ export const SForm = styled("form")({
 export const SButton = styled(Button)({
   margin: theme.spacing(3, 0, 2),
 });
+
+export const ModalInner = styled("div")({
+  outline: "none",
+  position: "absolute",
+  width: 400,
+  borderRadius: 10,
+  backgroundColor: "white",
+  paddingTop:"1rem",
+  boxShadow: theme.shadows[5],
+});
+
+export const getModalStyle = () => {
+  const top = 50;
+  const left = 50;
+
+  return {
+    top: `${top}%`,
+    left: `${left}%`,
+    transform: `translate(-${top}%,-${left}%)`,
+  };
+};

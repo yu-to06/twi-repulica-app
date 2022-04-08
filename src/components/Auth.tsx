@@ -8,10 +8,12 @@ import {
   Grid,
   Typography,
   IconButton,
+  Modal,
 } from "@mui/material";
 import LockIcon from "@mui/icons-material/Lock";
 import SendIcon from "@mui/icons-material/Send";
 import EmailIcon from "@mui/icons-material/Email";
+import CameraIcon from "@mui/icons-material/Camera";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { updateUserProfile } from "../features/userSlice";
 
@@ -22,19 +24,36 @@ import {
   SAvatar,
   SButton,
   SForm,
+  ModalInner,
+  getModalStyle,
 } from "./styled";
 import styles from "./Auth.module.css";
 import { Box } from "@mui/system";
+import { PasswordSharp } from "@mui/icons-material";
 
 const Auth: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLogin, setIsLogin] = useState(true);
-
   const [username, setUsername] = useState("");
   const [avatarImage, setAvatarImage] = useState<File | null>(null);
+  const [openModal, setOpenModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
 
   const dispatch = useDispatch();
+
+  const sendResetEmail = async (e: React.MouseEvent<HTMLElement>) => {
+    await auth
+      .sendPasswordResetEmail(resetEmail)
+      .then(() => {
+        setOpenModal(false);
+        setResetEmail("");
+      })
+      .catch((error) => {
+        alert(error.message);
+        setResetEmail("");
+      });
+  };
 
   const onChangeImageHandler = (event: React.ChangeEvent<HTMLInputElement>) => {
     // !マークはtypescriptでnullまたはundefinedではないと宣言している
@@ -114,6 +133,7 @@ const Auth: React.FC = () => {
                     setUsername(event.target.value);
                   }}
                 />
+
                 <Box textAlign="center">
                   <IconButton>
                     <label>
@@ -161,6 +181,7 @@ const Auth: React.FC = () => {
               type="password"
               id="password"
               autoComplete="current-password"
+              placeholder={isLogin ? "" : "Please Enter at Least 6 Characters"}
               value={password}
               onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
                 setPassword(event.target.value);
@@ -169,6 +190,11 @@ const Auth: React.FC = () => {
 
             {/* ログインボタン */}
             <SButton
+              disabled={
+                isLogin
+                  ? !email || password.length < 6
+                  : !username || !email || password.length < 6 || !avatarImage
+              }
               fullWidth
               variant="contained"
               color="primary"
@@ -196,7 +222,11 @@ const Auth: React.FC = () => {
             {/* ヘルプボタン */}
             <Grid container>
               <Grid item xs>
-                <span className={styles.login_reset}>Forgot Password?</span>
+                <span
+                  onClick={() => setOpenModal(true)}
+                  className={styles.login_reset}>
+                  Forgot Password?
+                </span>
               </Grid>
 
               <Grid item>
@@ -213,10 +243,30 @@ const Auth: React.FC = () => {
               fullWidth
               variant="contained"
               color="primary"
+              startIcon={<CameraIcon />}
               onClick={signInGoogle}>
               SignIn with Google
             </SButton>
           </SForm>
+          <Modal open={openModal} onClose={() => setOpenModal(false)}>
+            <ModalInner style={getModalStyle()}>
+              <div className={styles.login_modal}>
+                <TextField
+                  InputLabelProps={{ shrink: true }}
+                  type="email"
+                  name="email"
+                  label="Reset E-mail"
+                  value={resetEmail}
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+                    setResetEmail(event.target.value);
+                  }}
+                />
+                <IconButton onClick={sendResetEmail}>
+                  <SendIcon />
+                </IconButton>
+              </div>
+            </ModalInner>
+          </Modal>
         </SPaperDiv>
       </Grid>
     </SRootGrid>
