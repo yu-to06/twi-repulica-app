@@ -1,23 +1,120 @@
-import React from "react";
+import React, { useState } from "react";
 import styles from "./TweetInput.module.css";
 import { useSelector } from "react-redux";
 import { selectUser } from "../features/userSlice";
-import { auth } from "../firebase";
-import { Avatar } from "@mui/material";
+import { auth, storage, db } from "../firebase";
+import { Avatar, Button, IconButton } from "@mui/material";
+import firebase from "firebase/app";
+import AddAPhotoIcon from "@mui/icons-material/AddAPhoto";
+import { style } from "@mui/system";
 
-const TweetInput = () => {
+const TweetInput:React.FC = () => {
   const user = useSelector(selectUser);
+  const [tweetImage, setTweetImage] = useState<File | null>(null);
+  const [tweetMsg, setTweetMsg] = useState("");
+
+  const onChangeImageHandler = (event: React.ChangeEvent<HTMLInputElement>) => {
+    // !マークはtypescriptでnullまたはundefinedではないと宣言している
+    if (event.target.files![0]) {
+      setTweetImage(event.target.files![0]);
+      event.target.value = "";
+    }
+  };
+
+  // ツイートを送信する関数
+  const sendTweet = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (tweetImage) {
+      const S =
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+      // 16文字の名前を作りたいので16をセット
+      const N = 16;
+      // randomCharには16桁の乱数が入る。Uint32Arrayで約43億の配列ができ、そのうち16個がnに入る。
+      // その配列をSの長さ62で割ると必ず0～61が出力されるのでS[index]となる
+      const randomChar = Array.from(crypto.getRandomValues(new Uint32Array(N)))
+        .map((n) => S[n % S.length])
+        .join("");
+      const fileName = randomChar + "_" + tweetImage.name;
+      const uploadTweetImg = storage.ref(`images/${fileName}`).put(tweetImage);
+      uploadTweetImg.on(
+        firebase.storage.TaskEvent.STATE_CHANGED,
+        () => {},
+        (error) => {
+          alert(error.message);
+        },
+        async () => {
+          await storage
+            .ref("images")
+            .child(fileName)
+            .getDownloadURL()
+            .then(async (url) => {
+              await db.collection("posts").add({
+                avatar: user.photoUrl,
+                image: url,
+                text: tweetMsg,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                username: user.displayName,
+              });
+            });
+        }
+      );
+    } else {
+      db.collection("posts").add({
+        avatar: user.photoUrl,
+        image: "",
+        text: tweetMsg,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        username: user.displayName,
+      });
+    }
+    setTweetImage(null);
+    setTweetMsg("");
+  };
 
   return (
-    <div>
-      <Avatar
-        className={styles.tweet_avatar}
-        src={user.photoUrl}
-        onClick={async () => {
-          await auth.signOut();
-        }}
-      />
-    </div>
+    <>
+      <form onSubmit={sendTweet}>
+        <div className={styles.tweet_form}>
+          <Avatar
+            className={styles.tweet_avatar}
+            src={user.photoUrl}
+            onClick={async () => {
+              await auth.signOut();
+            }}
+          />
+          <input
+            type="text"
+            className={styles.tweet_input}
+            placeholder="what's happening?"
+            autoFocus
+            value={tweetMsg}
+            onChange={(event) => setTweetMsg(event.target.value)}
+          />
+          <IconButton>
+            <label>
+              <AddAPhotoIcon
+                className={
+                  tweetImage ? styles._addIconLoaded : styles.tweet_addIcon
+                }
+              />
+
+              <input
+                type="file"
+                className={styles.tweet_hiddenIcon}
+                onChange={onChangeImageHandler}
+              />
+            </label>
+          </IconButton>
+        </div>
+        <Button
+          type="submit"
+          className={
+            tweetMsg ? styles.tweet_sendBtn : styles.tweet_sendDisableBtn
+          }>
+          Tweet
+        </Button>
+      </form>
+    </>
   );
 };
 

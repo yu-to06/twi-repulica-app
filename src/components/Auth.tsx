@@ -31,6 +31,7 @@ import styles from "./Auth.module.css";
 import { Box } from "@mui/system";
 import { PasswordSharp } from "@mui/icons-material";
 
+
 const Auth: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
